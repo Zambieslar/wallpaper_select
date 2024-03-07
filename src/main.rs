@@ -1,12 +1,8 @@
-use gtk4::{Application, ApplicationWindow, prelude::*};
-use std::{self, os::unix::net::*};
+use gtk4::prelude::*;
 mod ui;
+mod uiobjects;
 
 fn main() {
-    let app = Application::builder()
-        .application_id("org.zambieslar.ihyprselect")
-        .build();
-    app.connect_activate(ui::build_ui);
-    app.run();
-
+    let app = ui::build_ui();
+    app.unwrap().run();
 }
