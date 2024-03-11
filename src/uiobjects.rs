@@ -17,6 +17,7 @@ pub fn vbox_builder() -> GtkBox {
 
 pub fn hbox_builder() -> GtkBox {
     let hbox = GtkBox::builder()
+
         .build();
     hbox
 }
