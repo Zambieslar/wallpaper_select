@@ -1,5 +1,7 @@
+use std::{future::IntoFuture, sync::mpsc, thread};
+
 use gtk4::{
-    gio::FILE_ATTRIBUTE_STANDARD_NAME, prelude::*, Application, ApplicationWindow, FlowBox, Frame, Grid, ScrolledWindow
+    ffi::GtkFrame, gio::FILE_ATTRIBUTE_STANDARD_NAME, prelude::*, Application, ApplicationWindow, DrawingArea, FlowBox, Frame, Grid, ScrolledWindow
 };
 use crate::uiobjects::*;
 
@@ -17,6 +19,8 @@ pub fn build_ui() -> Result<Application, Box<dyn std::error::Error>> {
             .build();
         let flow_box = FlowBox::builder()
             .max_children_per_line(4)
+            .column_spacing(0)
+            .row_spacing(0)
             .build();
         let main_window = ApplicationWindow::builder()
             .default_width(600)
@@ -40,25 +44,32 @@ pub fn build_ui() -> Result<Application, Box<dyn std::error::Error>> {
         layout.attach(&b_layout, 25, 0, 100, 100);
         b_layout.attach(&swindow, 0, 0, 1, 1);
         main_window.present();
-        src_button.connect_clicked(move |_|{
+        src_button.connect_clicked(move |_| {
             let flow_box = flow_box.clone();
+            let arc = std::sync::Arc::new(std::sync::Mutex::new(vec![]));
+            let arcb = std::sync::Arc::clone(&arc);
             file_dialog.select_folder(Some(&main_window), gtk4::gio::Cancellable::NONE, move |file| {
-                let entrys = file.clone().unwrap().enumerate_children(FILE_ATTRIBUTE_STANDARD_NAME.as_str(), gtk4::gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS, gtk4::gio::Cancellable::NONE).unwrap();
+                let data = arc.try_lock().unwrap();
+                data.push(file);
+                drop(data);
+            });
+            thread::spawn(move || {
+                let mut data = arc.try_lock().unwrap();
+                let entrys = data[0].unwrap().enumerate_children(FILE_ATTRIBUTE_STANDARD_NAME.as_str(), gtk4::gio::FileQueryInfoFlags::NOFOLLOW_SYMLINKS, gtk4::gio::Cancellable::NONE).unwrap();
                 for entry in entrys {
                     match entry {
                         Ok(..) => {
-                            let texture = gdk4::Texture::from_filename(format!(
+                            let pixbuf = gdk4::gdk_pixbuf::Pixbuf::from_file_at_scale(format!(
                                 "{}/{}",
-                                file.clone().unwrap().path().unwrap().to_str().unwrap(),
-                                entry.expect("Unable to load file").name().to_str().expect("Failed to load file name")
-                            )).unwrap();
-                            let picture = gtk4::Image::builder()
-
-                                .width_request(100)
-                                .height_request(65)
-                                .build();
-                            picture.set_from_paintable(Some(&texture));
-                            flow_box.append(&picture);
+                                data[0].unwrap().path().unwrap().to_str().unwrap(),
+                                entry.expect("Unable to load file").name().to_str().expect("Failed to load file name")),
+                                                                                      100,
+                                                                                      75,
+                                                                                      true).unwrap();
+                            data.clear();
+                            let texture = gdk4::Texture::for_pixbuf(&pixbuf);
+                            data.push(texture);
+                            drop(data);
                         }
                         Err(error) => {
                             println!("{:#?}", error)
@@ -66,6 +77,23 @@ pub fn build_ui() -> Result<Application, Box<dyn std::error::Error>> {
                     }
                 }
             });
+            loop {
+            if let Ok(mut data) = arcb.try_lock() {
+                let picture = gtk4::Image::builder()
+                    .vexpand(true)
+                    .hexpand(true)
+                    .build();
+                flow_box.append(&picture);
+                picture.set_from_paintable(Some(&data[0]));
+                picture.connect_scale_factor_notify(move |picture|{
+                    picture.queue_resize();
+                });
+            data.clear();
+            drop(data);
+            } else {
+                continue
+            };
+            }
         });
     });
     Ok(app)
