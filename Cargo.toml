@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-channel = "2.2.1"
 futures = "0.3.30"
-gdk4 = "0.8.1"
-gtk4 = { version = "0.8.0", features = ["v4_10", "v4_12"] }
+gdk4-wayland = "0.8.1"
+glib = "0.19.4"
+gsk4 = "0.8.1"
+gtk4 = { version = "0.9.1", features = ["v4_10"] }
+tokio = { version = "1.36.0", features = ["full"] }
