@@ -2,7 +2,7 @@ use crate::uiobjects::*;
 use gtk4::Box;
 use gtk4::Button;
 use gtk4::FileDialog;
-use gtk4::{prelude::*, Application, ApplicationWindow, FlowBox, Grid, ScrolledWindow};
+use gtk4::{Application, ApplicationWindow, FlowBox, Grid, ScrolledWindow};
 
 #[derive(Clone)]
 pub struct MainWindow {

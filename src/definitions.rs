@@ -1,16 +1,10 @@
-use std::{
-    fs::{remove_file, File},
-    io::{Read, Seek, Write},
-    rc::Rc,
-    sync::MutexGuard,
-};
-
-use gtk4::Image;
+use std::{fs::File, io::Write, sync::MutexGuard};
 
 pub static mut IMAGES: Vec<String> = Vec::<String>::new();
 pub static mut SELECTED: i32 = 0;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Environment {
     pub hypr_sig: String,
     pub xdg_runtime_dir: String,

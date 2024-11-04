@@ -3,7 +3,6 @@ use crate::traits::*;
 use gtk4::gio::{Cancellable, FileQueryInfoFlags, FILE_ATTRIBUTE_STANDARD_NAME};
 use gtk4::glib::ControlFlow;
 use gtk4::{prelude::*, Image};
-use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use ui::MainWindow;

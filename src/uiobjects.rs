@@ -1,4 +1,4 @@
-use gtk4::{prelude::*, Box as GtkBox, Button, FileDialog};
+use gtk4::{Box as GtkBox, Button, FileDialog};
 
 pub fn button_builder(label: &str) -> Button {
     let button = Button::builder().label(label).build();
@@ -12,6 +12,7 @@ pub fn vbox_builder() -> GtkBox {
     vbox
 }
 
+#[allow(dead_code)]
 pub fn hbox_builder() -> GtkBox {
     let hbox = GtkBox::builder()
         .orientation(gtk4::Orientation::Horizontal)
