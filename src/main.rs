@@ -3,6 +3,7 @@ use crate::traits::*;
 use gtk4::gio::{Cancellable, FileQueryInfoFlags, FILE_ATTRIBUTE_STANDARD_NAME};
 use gtk4::glib::ControlFlow;
 use gtk4::{prelude::*, Image};
+use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use ui::MainWindow;
@@ -16,7 +17,6 @@ fn main() {
         .application_id("org.zambieslar.ihyprselect")
         .build();
     app.connect_activate(move |app| {
-        let (tx, rx) = mpsc::channel();
         let environment: Arc<Mutex<Environment>> = Arc::new(Mutex::new(Environment::init()));
 
         // Initialize main window and children //
@@ -68,8 +68,10 @@ fn main() {
             });
 
         main_window.src_button.connect_clicked(move |_| {
-            let tx = tx.clone();
-            main_windowb.file_dialog.select_folder(
+            let flowbox = main_window.flow_box.clone();
+            let file_dialog = main_window.file_dialog.clone();
+            let (tx, rx) = mpsc::channel::<Option<String>>();
+            file_dialog.select_folder(
                 Some(&main_windowb.main_window),
                 Cancellable::NONE,
                 move |file| {
@@ -90,28 +92,30 @@ fn main() {
                                 );
                                 tx.send(Some(loc)).unwrap();
                             }
+                            tx.send(None).unwrap();
                         });
                     }
                 },
             );
+            gtk4::glib::idle_add_local(move || match rx.try_recv() {
+                Ok(Some(data)) => {
+                    let image = Image::from_file(data.clone());
+                    image.set_pixel_size(200);
+                    unsafe {
+                        IMAGES.push(data);
+                    }
+                    flowbox.append(&image);
+                    ControlFlow::Continue
+                }
+                Ok(None) => ControlFlow::Break,
+                Err(_err) => ControlFlow::Continue,
+            });
         });
         main_window.set_button.connect_clicked(move |_| unsafe {
             let data = environment.lock().unwrap();
             update_config(data, IMAGES[SELECTED as usize].clone());
         });
-        gtk4::glib::idle_add_local(move || match rx.try_recv() {
-            Ok(Some(data)) => {
-                let image = Image::from_file(data.clone());
-                image.set_pixel_size(200);
-                unsafe {
-                    IMAGES.push(data);
-                }
-                main_windowb.flow_box.append(&image);
-                ControlFlow::Continue
-            }
-            Ok(None) => ControlFlow::Break,
-            Err(_err) => ControlFlow::Continue,
-        });
+
         main_window.main_window.present();
     });
     app.run();
