@@ -3,8 +3,7 @@ use crate::traits::*;
 use gtk4::gio::{Cancellable, FileQueryInfoFlags, FILE_ATTRIBUTE_STANDARD_NAME};
 use gtk4::glib::ControlFlow;
 use gtk4::{prelude::*, Image};
-use std::fs::File;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use ui::MainWindow;
 mod definitions;
@@ -18,19 +17,9 @@ fn main() {
         .build();
     app.connect_activate(move |app| {
         let (tx, rx) = mpsc::channel();
-        let environment = Environment::init();
-        let environmenta = environment.clone();
-        let environmentb = environment.clone();
-        dbg!(environment);
-        if let Ok(hyprconf) =
-            File::open(format!("{}/.config/hypr/hyprpaper.conf", environmenta.home))
-        {
-        } else {
-            File::create(format!("{}/.config/hypr/hyprpaper.conf", environmentb.home))
-                .expect("Unable to create hyprpaper config");
-        }
-        // Initialize main window and children //
+        let environment: Arc<Mutex<Environment>> = Arc::new(Mutex::new(Environment::init()));
 
+        // Initialize main window and children //
         let main_window = MainWindow::build_ui(app.clone());
         let main_windowb = main_window.clone();
         main_window
@@ -50,12 +39,11 @@ fn main() {
         main_window
             .b_layout
             .attach(&main_window.swindow, 0, 0, 1, 1);
-
         // Initialize main window and children //
 
         // Start of events //
-
-        // Selecting image sets the static variable to the index in the flowboxes array //
+        /* Selecting image sets the static variable to an index in the flowboxes array. Index is
+        used to index the IMAGES array contianing the images loaded into memory */
         main_window
             .flow_box
             .connect_child_activated(move |_parent, child| unsafe {
@@ -107,7 +95,10 @@ fn main() {
                 },
             );
         });
-
+        main_window.set_button.connect_clicked(move |_| unsafe {
+            let data = environment.lock().unwrap();
+            update_config(data, IMAGES[SELECTED as usize].clone());
+        });
         gtk4::glib::idle_add_local(move || match rx.try_recv() {
             Ok(Some(data)) => {
                 let image = Image::from_file(data.clone());
@@ -119,9 +110,8 @@ fn main() {
                 ControlFlow::Continue
             }
             Ok(None) => ControlFlow::Break,
-            _ => ControlFlow::Continue,
+            Err(_err) => ControlFlow::Continue,
         });
-        main_window.set_button.connect_clicked(move |_| {});
         main_window.main_window.present();
     });
     app.run();
